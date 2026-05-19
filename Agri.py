@@ -295,4 +295,4 @@ Format response as:
 • [Organic option]
 ⏱ RECOVERY TIME: [estimate]
 💡 TIP: [one practical tip]""",
-            messages=[{"role": "user", "content": f"My crop shows: {symptom}. What nutrient defic
+            messages=[{"role": "user", "content": "My crop shows: {symptom}. What nutrient defic
