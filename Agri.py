@@ -176,7 +176,7 @@ MARKET_DATA = {
     "Nagpur":        [("Soybean",3900,3950,"—"),("Cotton",6600,6620,"▼"),("Wheat",2380,2275,"▲"),("Onion",1200,None,"—"),("Orange",4500,None,"▲"),("Lemon",5000,None,"▲"),("Chilli",9100,None,"▲"),("Garlic",6200,None,"—")],
 }
 
-LANG_NAMES = {"en":"English","ta":"தமிழ்","hi":"हिंदी","te":"తెలుగు","kn":"ಕನ್ನಡ","mr":"मराठी"}
+LANG_NAMES = {"en":"English","ta":"தமிழ்","hi":"हिंदी","te":"తెలుగు","kn":"ಕನ್ನಡ","mr":"മరాठी"}
 
 # ─── routes ─────────────────────────────────────────────────────
 @app.route("/")
@@ -280,6 +280,9 @@ def nutrient_check():
     data = request.json
     symptom = data.get("symptom","")
     lang = data.get("lang","en")
+    if not symptom:
+        return jsonify({"error": "No symptoms provided"}), 400
+
     lang_instruction = f"Respond in {LANG_NAMES.get(lang,'English')} language."
     try:
         msg = client.messages.create(
@@ -295,4 +298,4 @@ Format response as:
 • [Organic option]
 ⏱ RECOVERY TIME: [estimate]
 💡 TIP: [one practical tip]""",
-            messages=[{"role": "user", "content": "My crop shows: {symptom}. What nutrient defic
+            m
