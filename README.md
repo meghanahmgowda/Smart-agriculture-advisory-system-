@@ -49,7 +49,7 @@ export ANTHROPIC_API_KEY="your-api-key-here"
 
 4. **Run the application**
 ```bash
-python app.py
+python agri.py
 ```
 
 5. **Access the app**
