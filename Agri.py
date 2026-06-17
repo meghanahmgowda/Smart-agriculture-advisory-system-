@@ -1,3 +1,18 @@
+import os
+import kagglehub
+
+# Optional: Configure Kaggle credentials using environment variables.
+# Replace the placeholder values below with your Kaggle username and API key
+# or set the KAGGLE_USERNAME and KAGGLE_KEY environment variables.
+os.environ.setdefault("KAGGLE_USERNAME", "YOUR_KAGGLE_USERNAME")
+os.environ.setdefault("KAGGLE_KEY", "YOUR_KAGGLE_API_KEY")
+
+try:
+    DATASET_PATH = kagglehub.dataset_download("abdallahalidev/plantvillage-dataset")
+    print(f"PlantVillage dataset available at: {DATASET_PATH}")
+except Exception as e:
+    print(f"PlantVillage dataset download skipped: {e}")
+
 from flask import Flask, render_template, request, jsonify, session
 import anthropic
 import base64
