@@ -225,7 +225,25 @@ export default function DiseaseIdentifier({ setView }: DiseaseIdentifierProps) {
                 </div>
               )}
 
-              {result && (
+              {result && result.disease === "Not a leaf, vegetable or fruit" && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-600">
+                    <AlertCircle className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-xl font-bold text-red-800">{result.disease}</h4>
+                  <p className="mt-2 text-red-700">{result.cause}</p>
+                  <ul className="mt-4 inline-block text-left text-sm text-red-700">
+                    {result.prevention.map((p, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {result && result.disease !== "Not a leaf, vegetable or fruit" && (
                 <div className="space-y-5">
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="rounded-xl bg-green-50 p-4">
@@ -259,7 +277,7 @@ export default function DiseaseIdentifier({ setView }: DiseaseIdentifierProps) {
                     </div>
                   </div>
 
-                  {result.confidence < 60 && (
+                  {result.confidence < 60 && result.confidence > 0 && (
                     <div className="rounded-xl bg-yellow-50 p-3 text-sm text-yellow-800">
                       Low confidence prediction. The leaf may not be in the training dataset, or the photo quality may be poor. Try a clearer image.
                     </div>

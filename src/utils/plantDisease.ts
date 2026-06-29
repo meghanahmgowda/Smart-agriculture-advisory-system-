@@ -16,6 +16,11 @@ export interface Diagnosis {
 const MODEL_URL =
   "https://cdn.jsdelivr.net/gh/Rishit-dagli/Greenathon-Plant-AI@main/models/plant_disease_tfjs/model.json";
 
+const MOBILENET_URL =
+  "https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v3_small_100_224/classification/5/default/1";
+const IMAGENET_LABELS_URL =
+  "https://cdn.jsdelivr.net/gh/anishathalye/imagenet-simple-labels@master/imagenet-simple-labels.json";
+
 const classNames: Record<number, string> = {
   0: "Apple___Apple_scab",
   1: "Apple___Black_rot",
@@ -58,6 +63,79 @@ const classNames: Record<number, string> = {
 };
 
 let model: tf.LayersModel | null = null;
+let mobilenet: tf.GraphModel | null = null;
+let imagenetLabels: string[] | null = null;
+
+const plantKeywords = [
+  "leaf",
+  "foliage",
+  "plant",
+  "flower",
+  "tree",
+  "fruit",
+  "vegetable",
+  "banana",
+  "apple",
+  "orange",
+  "lemon",
+  "lime",
+  "mango",
+  "grape",
+  "strawberry",
+  "blueberry",
+  "raspberry",
+  "blackberry",
+  "pineapple",
+  "watermelon",
+  "melon",
+  "papaya",
+  "pomegranate",
+  "guava",
+  "sapodilla",
+  "jackfruit",
+  "custard apple",
+  "kiwi",
+  "pear",
+  "peach",
+  "plum",
+  "apricot",
+  "cherry",
+  "berry",
+  "tomato",
+  "potato",
+  "onion",
+  "garlic",
+  "ginger",
+  "carrot",
+  "cucumber",
+  "pepper",
+  "cauliflower",
+  "cabbage",
+  "broccoli",
+  "lettuce",
+  "spinach",
+  "okra",
+  "pumpkin",
+  "squash",
+  "beans",
+  "peas",
+  "corn",
+  "maize",
+  "wheat",
+  "rice",
+  "cotton",
+  "sugarcane",
+  "coffee",
+  "tea",
+  "cocoa",
+  "coconut",
+  "almond",
+  "cashew",
+  "nut",
+  "seed",
+  "herb",
+  "spice",
+];
 
 export async function loadModel(): Promise<tf.LayersModel | null> {
   if (model) return model;
@@ -151,8 +229,99 @@ function analyzeSpoilage(file: File): Promise<number> {
   });
 }
 
+async function loadMobileNet(): Promise<boolean> {
+  if (mobilenet && imagenetLabels) return true;
+  try {
+    await tf.ready();
+    const [model, labels] = await Promise.all([
+      tf.loadGraphModel(MOBILENET_URL, { fromTFHub: true }),
+      fetch(IMAGENET_LABELS_URL).then((r) => r.json()),
+    ]);
+    mobilenet = model;
+    imagenetLabels = labels;
+    return true;
+  } catch (err) {
+    console.error("MobileNet validation model failed to load", err);
+    return false;
+  }
+}
+
+async function validateImageIsPlant(file: File): Promise<boolean> {
+  const ready = await loadMobileNet();
+  if (!ready || !mobilenet || !imagenetLabels) {
+    // If validator can't load, allow the disease model to decide
+    return true;
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      canvas.width = 224;
+      canvas.height = 224;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(true);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, 224, 224);
+
+      try {
+        const tensor = tf.tidy(() =>
+          tf.browser.fromPixels(canvas).expandDims(0).toFloat().div(255)
+        );
+        const logits = mobilenet!.predict(tensor) as tf.Tensor;
+        const probs = tf.softmax(logits).dataSync();
+        tf.dispose([tensor, logits]);
+
+        const topK = 5;
+        const indices = Array.from(probs)
+          .map((p, i) => ({ p, i }))
+          .sort((a, b) => b.p - a.p)
+          .slice(0, topK)
+          .map((x) => x.i);
+
+        const matched = indices.some((idx) => {
+          const label = (imagenetLabels![idx] || "").toLowerCase();
+          return plantKeywords.some((kw) => label.includes(kw));
+        });
+
+        resolve(matched);
+      } catch (err) {
+        console.error(err);
+        resolve(true);
+      }
+    };
+    img.onerror = () => resolve(true);
+    img.src = url;
+  });
+}
+
+function invalidImageDiagnosis(): Diagnosis {
+  return {
+    crop: "Unknown",
+    plantType: "Invalid image",
+    disease: "Not a leaf, vegetable or fruit",
+    confidence: 0,
+    spoilage: 0,
+    cause:
+      "The uploaded image does not appear to be a plant leaf, vegetable, or fruit. The AI scanner only accepts crop-related photos.",
+    symptoms: [],
+    organicCure: [],
+    chemicalCure: [],
+    prevention: ["Please upload a clear photo of a plant leaf, vegetable, or fruit."],
+  };
+}
+
 export async function analyzePlantImage(file: File): Promise<Diagnosis> {
   const spoilage = await analyzeSpoilage(file);
+
+  const isPlantLike = await validateImageIsPlant(file);
+  if (!isPlantLike) {
+    return invalidImageDiagnosis();
+  }
 
   const loadedModel = await loadModel();
   if (!loadedModel) {
